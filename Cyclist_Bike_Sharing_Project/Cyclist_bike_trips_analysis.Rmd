@@ -1,0 +1,338 @@
+---
+title: "Cyclist Bike Trip Analysis"
+author: "Ajay Chaudhary"
+date: "02/01/2022"
+output: pdf_document
+---
+
+# Cyclist_Full_Year_Analysis
+
+This analysis is based on cyclist case study.The purpose of this script is to consolidate downloaded Cyclist data into a single data frame and then conduct simple analysis to help answer the key question: “In what ways do annual members and casual riders use Cyclist bikes differently?
+
+## Install Required packages
+
+Install and load packages like tidyverse,lubridate and ggplot2
+
+```{r loading packages,warning=FALSE, echo=TRUE, results='hide'}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+```
+
+## STEP 1: Upload data
+
+
+Upload cyclist csv files:
+
+```{r Upload CSV files,echo=TRUE,message=FALSE,results='hide'}
+q2_2019 <- read_csv("D:/Coursera/Google_Analyze_data/Capstone_Project/Cyclist_Bike_Sharing/Cyclist_bike_trips-csv_files/Cyclist_Trips_2019_Q2.csv")
+q3_2019 <- read_csv("D:/Coursera/Google_Analyze_data/Capstone_Project/Cyclist_Bike_Sharing/Cyclist_bike_trips-csv_files/Cyclist_Trips_2019_Q3.csv")
+q4_2019 <- read_csv("D:/Coursera/Google_Analyze_data/Capstone_Project/Cyclist_Bike_Sharing/Cyclist_bike_trips-csv_files/Cyclist_Trips_2019_Q4.csv")
+q1_2020 <- read_csv("D:/Coursera/Google_Analyze_data/Capstone_Project/Cyclist_Bike_Sharing/Cyclist_bike_trips-csv_files/Cyclist_Trips_2020_Q1.csv")
+```
+
+
+## STEP 2: WRANGLE DATA AND COMBINE INTO A SINGLE FILE
+
+
+### Compare column names of each file
+
+While the names don't have to be in the same order, they DO need to match perfectly before we can use a command to join them into one file
+
+```{r column q2_2019, echo=TRUE}
+colnames(q2_2019)
+```
+```{r column q3_2019}
+colnames(q3_2019)
+```
+```{r column q4_2019}
+colnames(q4_2019)
+```
+```{r column q4_2020}
+colnames(q4_2019)
+```
+
+
+### Rename column
+
+Rename columns  to make them consisent with q1_2020
+
+```{r rename column,echo=TRUE,results='hide'}
+(q4_2019 <- rename(q4_2019
+                   ,ride_id = trip_id
+                   ,rideable_type = bikeid 
+                   ,started_at = start_time  
+                   ,ended_at = end_time  
+                   ,start_station_name = from_station_name 
+                   ,start_station_id = from_station_id 
+                   ,end_station_name = to_station_name 
+                   ,end_station_id = to_station_id 
+                   ,member_casual = usertype))
+(q3_2019 <- rename(q3_2019
+                   ,ride_id = trip_id
+                   ,rideable_type = bikeid 
+                   ,started_at = start_time  
+                   ,ended_at = end_time  
+                   ,start_station_name = from_station_name 
+                   ,start_station_id = from_station_id 
+                   ,end_station_name = to_station_name 
+                   ,end_station_id = to_station_id 
+                   ,member_casual = usertype))
+(q2_2019 <- rename(q2_2019
+                   ,ride_id = "01 - Rental Details Rental ID"
+                   ,rideable_type = "01 - Rental Details Bike ID" 
+                   ,started_at = "01 - Rental Details Local Start Time"  
+                   ,ended_at = "01 - Rental Details Local End Time"  
+                   ,start_station_name = "03 - Rental Start Station Name" 
+                   ,start_station_id = "03 - Rental Start Station ID"
+                   ,end_station_name = "02 - Rental End Station Name" 
+                   ,end_station_id = "02 - Rental End Station ID"
+                   ,member_casual = "User Type"))
+
+```
+ 
+ 
+### Inspect Dataframe
+
+
+Inspect the dataframes and look for incongruencies
+
+```{r Inspect Dataframe}
+str(q1_2020)
+```
+```{r}
+str(q4_2019)
+```
+```{r}
+str(q3_2019)
+```
+```{r}
+str(q2_2019)
+```
+
+
+
+### Convert Column format
+
+
+Convert ride_id and rideable_type to character so that they can stack correctly
+
+```{r Convert column format}
+q4_2019 <- mutate(q4_2019, ride_id = as.character(ride_id), rideable_type = as.character(rideable_type))
+q3_2019 <- mutate(q3_2019, ride_id = as.character(ride_id), rideable_type = as.character(rideable_type))
+q2_2019 <- mutate(q2_2019, ride_id = as.character(ride_id), rideable_type = as.character(rideable_type))
+```
+
+
+### Join Dataframes
+
+
+Join all the quarter data into one big data frame
+
+```{r Join Dataframes}
+all_trips <- bind_rows(q2_2019,q3_2019,q4_2019,q1_2020)
+```
+
+
+### Remove Columns
+
+
+Remove lat, long, birthyear, and gender fields as this data was dropped beginning in 2020
+
+```{r Remove Columns}
+all_trips <- all_trips %>%
+  select(-c(start_lat,start_lng,end_lat,end_lng,birthyear,gender,"01 - Rental Details Duration In Seconds Uncapped", "05 - Member Details Member Birthday Year", "Member Gender", "tripduration"))
+```
+
+
+
+
+## STEP 3: CLEAN UP AND ADD DATA TO PREPARE FOR ANALYSIS
+
+
+
+### Inspect new table
+
+
+Inspect the new table that has been created
+
+list of column names
+
+```{r column names}
+colnames(all_trips)
+```
+Number of rows in data frame
+```{r number of rows}
+nrow(all_trips)
+```
+Dimension of the data frame
+```{r Dimension}
+dim(all_trips)
+```
+First six rows of data frame
+```{r top rows}
+head(all_trips)
+```
+List of columns and data types
+```{r data types}
+str(all_trips)
+```
+Statistical summary of data frame
+```{r Summary}
+summary(all_trips)
+```
+
+Number of observation fall under each usertype
+```{r number of usertype}
+table(all_trips$member_casual)
+```
+
+
+
+### Cleaning data
+
+
+ In the "member_casual" column, replace "Subscriber" with "member" and "Customer" with "casual"
+Before 2020, Cyclist used different labels for these two types of riders ... we will want to make our dataframe consistent with their current nomenclature
+
+#### Reassign to the desired values (we will go with the current 2020 labels)
+
+
+```{r reassign values}
+all_trips <- all_trips %>%
+  mutate(member_casual = recode(member_casual, "Subscriber" = "member", "Customer" = "casual"))
+```
+
+
+#### Adding columns
+
+
+Add columns that list the date, month, day, and year of each ride
+
+```{r Adding columns}
+all_trips$date <- as.Date(all_trips$started_at)
+all_trips$month <- format(as.Date(all_trips$date), "%m")
+all_trips$day <- format(as.Date(all_trips$date), "%d")
+all_trips$year <- format(as.Date(all_trips$date), "%Y")
+all_trips$day_of_week <- format(as.Date(all_trips$date), "%A")
+```
+
+Adding ride length column
+
+```{r ride length}
+all_trips$ride_length <- difftime(all_trips$ended_at,all_trips$started_at)
+```
+
+Inspect the structure of the column
+
+```{r structure of the column}
+str(all_trips)
+```
+
+
+#### Convert data format
+
+
+Convert "ride_length" from Factor to numeric so we can run calculations on the data
+
+```{r Convert data format}
+is.factor(all_trips$ride_length)
+all_trips$ride_length <- as.numeric(as.character(all_trips$ride_length))
+is.numeric(all_trips$ride_length)
+```
+
+
+### Removing data
+
+The dataframe includes a few hundred entries when bikes were taken out of docks and checked for quality by cyclist or ride_length was negative
+We will create a new version of the dataframe (v2) since data is being removed
+
+```{r Removing data}
+all_trips_v2 <- all_trips[!(all_trips$start_station_name == "HQ QR"|all_trips$ride_length<0),]
+```
+
+
+## STEP 4: CONDUCT DESCRIPTIVE ANALYSIS
+
+
+### Descriptive analysis on ride_length (all figures in seconds)
+
+Summary of ride length
+
+```{r Summary of ride length}
+summary(all_trips_v2$ride_length)
+```
+
+### Compare members and casual riders
+
+comparing mean, median, max, min in ride length between members and casual riders 
+
+```{r Compare}
+aggregate(all_trips_v2$ride_length~all_trips_v2$member_casual, FUN = mean)
+aggregate(all_trips_v2$ride_length~all_trips_v2$member_casual, FUN = median)
+aggregate(all_trips_v2$ride_length~all_trips_v2$member_casual, FUN = max)
+aggregate(all_trips_v2$ride_length~all_trips_v2$member_casual, FUN = min)
+```
+
+
+See the average ride time by each day for members vs casual user
+
+```{r average ride time by each day}
+aggregate(all_trips_v2$ride_length~all_trips_v2$member_casual+all_trips_v2$day_of_week, FUN = mean)
+```
+
+Days of week are not in order.Let's fix that
+
+```{r ordering days of week}
+all_trips_v2$day_of_week <- ordered(all_trips_v2$day_of_week, levels = c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"))
+```
+
+Now, let's run the average ride time by each day for members vs casual users
+
+```{r}
+aggregate(all_trips_v2$ride_length~all_trips_v2$member_casual+all_trips_v2$day_of_week, FUN = mean)
+```
+
+
+### Analyze ridership data by type and weekday
+
+```{r Analyze data}
+all_trips_v2 %>%
+  mutate(weekday = wday(started_at, label = TRUE))%>%
+  group_by(member_casual,weekday)%>%
+  summarise(number_of_rides = n(),average_duration = mean(ride_length))%>%
+  arrange(member_casual,weekday)
+
+```
+
+
+
+### Visualization
+
+
+**Visualize the number of rides by the rider type**
+
+```{r visualize the number of rides}
+all_trips_v2 %>%
+  mutate(weekday = wday(started_at,label = TRUE)) %>%
+  group_by(member_casual,weekday) %>%
+  summarise(number_of_rides = n(),average_duration = mean(ride_length)) %>%
+  arrange(member_casual,weekday) %>%
+  ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual))+
+  geom_col(position = "dodge")
+```
+
+
+
+**Visualization for average duration**
+
+```{r visualization for average duration}
+all_trips_v2 %>%
+   mutate(weekday = wday(started_at, label = TRUE))%>%
+  group_by(member_casual,weekday)%>%
+  summarise(number_of_rides = n(),average_duration = mean(ride_length))%>%
+  arrange(member_casual,weekday) %>%
+   ggplot(aes(x = weekday, y = average_duration, fill = member_casual))+
+  geom_col(position = "dodge")
+```
+
